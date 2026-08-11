@@ -1,15 +1,17 @@
 -- ============================================================================
--- SQL Schema and Seed Data for Synthetic Insurance Policy Contracts (India Market)
--- Generated: 2026-07-31
+-- SQL Schema and Seed Data for Synthetic Insurance Policy Contracts (SQLite)
 -- Description: Structured representation of synthetic insurance policy contracts
 --              including deductibles, coverage caps, exclusions, and active terms.
+-- Generated: 2026-08-11
 -- ============================================================================
 
+PRAGMA foreign_keys = ON;
+
 -- Drop existing tables if re-running
+DROP TABLE IF EXISTS policy_terms;
 DROP TABLE IF EXISTS policy_exclusions;
 DROP TABLE IF EXISTS policy_deductibles;
 DROP TABLE IF EXISTS policy_coverages;
-DROP TABLE IF EXISTS policy_terms;
 DROP TABLE IF EXISTS policy_contracts;
 
 -- ----------------------------------------------------------------------------
@@ -17,18 +19,18 @@ DROP TABLE IF EXISTS policy_contracts;
 -- Core policy details and metadata
 -- ----------------------------------------------------------------------------
 CREATE TABLE policy_contracts (
-    policy_id INT AUTO_INCREMENT PRIMARY KEY,
-    policy_number VARCHAR(100) NOT NULL UNIQUE,
-    scheme_or_product_name VARCHAR(255),
-    policy_type VARCHAR(100) NOT NULL,
-    insured_entity_name VARCHAR(255) NOT NULL,
-    effective_start_date DATE NOT NULL,
-    effective_end_date DATE NOT NULL,
-    policy_status VARCHAR(50) DEFAULT 'Active',
-    regulatory_framework VARCHAR(100) DEFAULT 'IRDAI',
-    currency VARCHAR(10) DEFAULT 'INR',
+    policy_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    policy_number TEXT NOT NULL UNIQUE,
+    scheme_or_product_name TEXT,
+    policy_type TEXT NOT NULL,
+    insured_entity_name TEXT NOT NULL,
+    effective_start_date TEXT NOT NULL,
+    effective_end_date TEXT NOT NULL,
+    policy_status TEXT DEFAULT 'Active',
+    regulatory_framework TEXT DEFAULT 'IRDAI',
+    currency TEXT DEFAULT 'INR',
     full_text TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ----------------------------------------------------------------------------
@@ -36,13 +38,13 @@ CREATE TABLE policy_contracts (
 -- Coverage details, limits, and financial caps
 -- ----------------------------------------------------------------------------
 CREATE TABLE policy_coverages (
-    coverage_id INT AUTO_INCREMENT PRIMARY KEY,
-    policy_id INT NOT NULL,
-    coverage_name VARCHAR(255) NOT NULL,
-    coverage_limit_amount DECIMAL(15, 2),
-    coverage_limit_description VARCHAR(500),
-    sub_limit_percentage DECIMAL(5, 2),
-    time_waiting_period_hours INT,
+    coverage_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    policy_id INTEGER NOT NULL,
+    coverage_name TEXT NOT NULL,
+    coverage_limit_amount REAL,
+    coverage_limit_description TEXT,
+    sub_limit_percentage REAL,
+    time_waiting_period_hours INTEGER,
     FOREIGN KEY (policy_id) REFERENCES policy_contracts(policy_id) ON DELETE CASCADE
 );
 
@@ -51,12 +53,12 @@ CREATE TABLE policy_coverages (
 -- Deductibles, copayments, retention, and excesses
 -- ----------------------------------------------------------------------------
 CREATE TABLE policy_deductibles (
-    deductible_id INT AUTO_INCREMENT PRIMARY KEY,
-    policy_id INT NOT NULL,
-    deductible_type VARCHAR(100) NOT NULL, -- e.g., Mandatory, Voluntary, Co-payment, SIR
-    deductible_amount DECIMAL(15, 2),
-    deductible_percentage DECIMAL(5, 2),
-    description VARCHAR(500) NOT NULL,
+    deductible_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    policy_id INTEGER NOT NULL,
+    deductible_type TEXT NOT NULL, -- e.g., Mandatory, Voluntary, Co-payment, SIR
+    deductible_amount REAL,
+    deductible_percentage REAL,
+    description TEXT NOT NULL,
     FOREIGN KEY (policy_id) REFERENCES policy_contracts(policy_id) ON DELETE CASCADE
 );
 
@@ -65,11 +67,11 @@ CREATE TABLE policy_deductibles (
 -- Explicit policy exclusions and waiting periods
 -- ----------------------------------------------------------------------------
 CREATE TABLE policy_exclusions (
-    exclusion_id INT AUTO_INCREMENT PRIMARY KEY,
-    policy_id INT NOT NULL,
-    exclusion_code VARCHAR(50),
-    exclusion_category VARCHAR(100), -- e.g., Waiting Period, Standard Exclusion, Specific Event
-    waiting_period_months INT,
+    exclusion_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    policy_id INTEGER NOT NULL,
+    exclusion_code TEXT,
+    exclusion_category TEXT, -- e.g., Waiting Period, Standard Exclusion, Specific Event
+    waiting_period_months INTEGER,
     exclusion_description TEXT NOT NULL,
     FOREIGN KEY (policy_id) REFERENCES policy_contracts(policy_id) ON DELETE CASCADE
 );
@@ -79,10 +81,10 @@ CREATE TABLE policy_exclusions (
 -- Special conditions, riders, bonuses, and active statutory clauses
 -- ----------------------------------------------------------------------------
 CREATE TABLE policy_terms (
-    term_id INT AUTO_INCREMENT PRIMARY KEY,
-    policy_id INT NOT NULL,
-    term_category VARCHAR(100) NOT NULL, -- e.g., Rider, Renewal, Reporting, Endorsement
-    term_name VARCHAR(255) NOT NULL,
+    term_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    policy_id INTEGER NOT NULL,
+    term_category TEXT NOT NULL, -- e.g., Rider, Renewal, Reporting, Endorsement
+    term_name TEXT NOT NULL,
     term_details TEXT NOT NULL,
     FOREIGN KEY (policy_id) REFERENCES policy_contracts(policy_id) ON DELETE CASCADE
 );
@@ -135,31 +137,30 @@ PRIMARY TPA: MediAssist India TPA Services Pvt. Ltd.
 - Grace Period & Continuity: 30-day grace period allowed for renewal without break-in-policy benefit loss. 8-year moratorium clause applies (claims cannot be contested for non-disclosure after 8 continuous renewal years, except for proven fraud).'
 );
 
-SET @policy_1_id = LAST_INSERT_ID();
-
+-- Using subquery to replace MySQL LAST_INSERT_ID() / SET @variable
 INSERT INTO policy_coverages (policy_id, coverage_name, coverage_limit_amount, coverage_limit_description, sub_limit_percentage) VALUES
-(@policy_1_id, 'Base Sum Insured', 1000000.00, 'Base Sum Insured per policy year', NULL),
-(@policy_1_id, 'Room Rent, Boarding & Nursing', 1000000.00, 'Capped at 2% of Sum Insured per day', 2.00),
-(@policy_1_id, 'ICU Expenses', 1000000.00, 'Capped at 5% of Sum Insured per day', 5.00),
-(@policy_1_id, 'Cataract Treatment', 40000.00, 'Sub-limit of 25% of Sum Insured or ₹40,000, whichever is lower, per eye', 25.00),
-(@policy_1_id, 'AYUSH Treatment', 1000000.00, 'Up to 100% of Sum Insured at government-recognized institutes/hospitals', 100.00),
-(@policy_1_id, 'Pre-Hospitalization', NULL, '30 days prior to hospitalization covered up to actuals within Sum Insured', NULL),
-(@policy_1_id, 'Post-Hospitalization', NULL, '60 days post-discharge covered up to actuals within Sum Insured', NULL);
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'IRDAI/HLT/2026/IND-8849102'), 'Base Sum Insured', 1000000.00, 'Base Sum Insured per policy year', NULL),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'IRDAI/HLT/2026/IND-8849102'), 'Room Rent, Boarding & Nursing', 1000000.00, 'Capped at 2% of Sum Insured per day', 2.00),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'IRDAI/HLT/2026/IND-8849102'), 'ICU Expenses', 1000000.00, 'Capped at 5% of Sum Insured per day', 5.00),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'IRDAI/HLT/2026/IND-8849102'), 'Cataract Treatment', 40000.00, 'Sub-limit of 25% of Sum Insured or ₹40,000, whichever is lower, per eye', 25.00),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'IRDAI/HLT/2026/IND-8849102'), 'AYUSH Treatment', 1000000.00, 'Up to 100% of Sum Insured at government-recognized institutes/hospitals', 100.00),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'IRDAI/HLT/2026/IND-8849102'), 'Pre-Hospitalization', NULL, '30 days prior to hospitalization covered up to actuals within Sum Insured', NULL),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'IRDAI/HLT/2026/IND-8849102'), 'Post-Hospitalization', NULL, '60 days post-discharge covered up to actuals within Sum Insured', NULL);
 
 INSERT INTO policy_deductibles (policy_id, deductible_type, deductible_amount, deductible_percentage, description) VALUES
-(@policy_1_id, 'Co-payment', NULL, 5.00, 'Standard Mandatory Co-payment applied on every admissible claim amount'),
-(@policy_1_id, 'Voluntary Deductible', 0.00, NULL, 'Deductible NIL (Voluntary deductible not opted)');
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'IRDAI/HLT/2026/IND-8849102'), 'Co-payment', NULL, 5.00, 'Standard Mandatory Co-payment applied on every admissible claim amount'),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'IRDAI/HLT/2026/IND-8849102'), 'Voluntary Deductible', 0.00, NULL, 'Deductible NIL (Voluntary deductible not opted)');
 
 INSERT INTO policy_exclusions (policy_id, exclusion_code, exclusion_category, waiting_period_months, exclusion_description) VALUES
-(@policy_1_id, NULL, 'Initial Waiting Period', 1, 'Any disease contracted during the first 30 days from policy inception, except accidental injuries'),
-(@policy_1_id, NULL, 'Specific Illness Waiting Period', 24, 'Cataract, Hernia, Hydrocele, Joint replacement unless due to accident, Piles, Sinusitis'),
-(@policy_1_id, 'Excl01', 'Pre-Existing Diseases (PED)', 36, 'Pre-existing conditions (e.g., Type-2 Diabetes) admissible only after 36 months of continuous coverage'),
-(@policy_1_id, NULL, 'General Exclusion', NULL, 'Domiciliary hospitalization, cosmetic/aesthetic procedures, hazardous sports injuries, alcohol/substance abuse treatments, and unproven/experimental treatments');
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'IRDAI/HLT/2026/IND-8849102'), NULL, 'Initial Waiting Period', 1, 'Any disease contracted during the first 30 days from policy inception, except accidental injuries'),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'IRDAI/HLT/2026/IND-8849102'), NULL, 'Specific Illness Waiting Period', 24, 'Cataract, Hernia, Hydrocele, Joint replacement unless due to accident, Piles, Sinusitis'),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'IRDAI/HLT/2026/IND-8849102'), 'Excl01', 'Pre-Existing Diseases (PED)', 36, 'Pre-existing conditions (e.g., Type-2 Diabetes) admissible only after 36 months of continuous coverage'),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'IRDAI/HLT/2026/IND-8849102'), NULL, 'General Exclusion', NULL, 'Domiciliary hospitalization, cosmetic/aesthetic procedures, hazardous sports injuries, alcohol/substance abuse treatments, and unproven/experimental treatments');
 
 INSERT INTO policy_terms (policy_id, term_category, term_name, term_details) VALUES
-(@policy_1_id, 'Bonus', 'No Claim Bonus (NCB)', 'Cumulative bonus increases Sum Insured by 5% for every claim-free year, up to a maximum of 50%'),
-(@policy_1_id, 'Renewal', 'Grace Period & Continuity', '30-day grace period allowed for renewal without break-in-policy benefit loss'),
-(@policy_1_id, 'Statutory', 'Moratorium Clause', '8-year moratorium clause applies; claims cannot be contested for non-disclosure after 8 continuous renewal years except for proven fraud');
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'IRDAI/HLT/2026/IND-8849102'), 'Bonus', 'No Claim Bonus (NCB)', 'Cumulative bonus increases Sum Insured by 5% for every claim-free year, up to a maximum of 50%'),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'IRDAI/HLT/2026/IND-8849102'), 'Renewal', 'Grace Period & Continuity', '30-day grace period allowed for renewal without break-in-policy benefit loss'),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'IRDAI/HLT/2026/IND-8849102'), 'Statutory', 'Moratorium Clause', '8-year moratorium clause applies; claims cannot be contested for non-disclosure after 8 continuous renewal years except for proven fraud');
 
 
 -- ----------------------------------------------------------------------------
@@ -204,28 +205,26 @@ POLICY TERM: 01-Jul-2026 to 30-Jun-2027 (Active - Own Damage + 3-Year Third-Part
 - Zero Depreciation Add-on (Dep Shield): Depreciation deduction waived on plastic, rubber, glass, and metal replacement parts during repairs at authorized network garages.'
 );
 
-SET @policy_2_id = LAST_INSERT_ID();
-
 INSERT INTO policy_coverages (policy_id, coverage_name, coverage_limit_amount, coverage_limit_description, sub_limit_percentage) VALUES
-(@policy_2_id, 'Section I: Own Damage (OD)', 1250000.00, 'Up to Insured Declared Value (IDV) for loss due to fire, theft, flood, landslide, or collision', NULL),
-(@policy_2_id, 'Section II: Third-Party Bodily Injury/Death', NULL, 'Unlimited coverage as per Motor Vehicles Act, 1988', NULL),
-(@policy_2_id, 'Section II: Third-Party Property Damage (TPPD)', 750000.00, 'Statutory cap on property damage liability', NULL),
-(@policy_2_id, 'Personal Accident (PA) Cover for Owner-Driver', 1500000.00, 'Mandatory statutory cover cap', NULL);
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'MOT-PVT-2026-0049281'), 'Section I: Own Damage (OD)', 1250000.00, 'Up to Insured Declared Value (IDV) for loss due to fire, theft, flood, landslide, or collision', NULL),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'MOT-PVT-2026-0049281'), 'Section II: Third-Party Bodily Injury/Death', NULL, 'Unlimited coverage as per Motor Vehicles Act, 1988', NULL),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'MOT-PVT-2026-0049281'), 'Section II: Third-Party Property Damage (TPPD)', 750000.00, 'Statutory cap on property damage liability', NULL),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'MOT-PVT-2026-0049281'), 'Personal Accident (PA) Cover for Owner-Driver', 1500000.00, 'Mandatory statutory cover cap', NULL);
 
 INSERT INTO policy_deductibles (policy_id, deductible_type, deductible_amount, deductible_percentage, description) VALUES
-(@policy_2_id, 'Compulsory Deductible', 1000.00, NULL, 'IRDAI Compulsory Deductible for private cars <= 1500 cc'),
-(@policy_2_id, 'Voluntary Deductible', 2500.00, NULL, 'Voluntary Deductible opted by the policyholder'),
-(@policy_2_id, 'Total OD Deductible', 3500.00, NULL, 'Total combined deductible payable per Own Damage claim');
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'MOT-PVT-2026-0049281'), 'Compulsory Deductible', 1000.00, NULL, 'IRDAI Compulsory Deductible for private cars <= 1500 cc'),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'MOT-PVT-2026-0049281'), 'Voluntary Deductible', 2500.00, NULL, 'Voluntary Deductible opted by the policyholder'),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'MOT-PVT-2026-0049281'), 'Total OD Deductible', 3500.00, NULL, 'Total combined deductible payable per Own Damage claim');
 
 INSERT INTO policy_exclusions (policy_id, exclusion_code, exclusion_category, waiting_period_months, exclusion_description) VALUES
-(@policy_2_id, NULL, 'General Exclusion', NULL, 'Driving without a valid driving license or under the influence of intoxicating liquor or drugs'),
-(@policy_2_id, NULL, 'General Exclusion', NULL, 'Consequential loss, depreciation, wear and tear, electrical/mechanical breakdown (e.g., hydrostatic lock)'),
-(@policy_2_id, NULL, 'Geographical Exclusion', NULL, 'Claims arising outside the geographical boundaries of India'),
-(@policy_2_id, NULL, 'Limitation of Use', NULL, 'Usage of private vehicle for commercial transport, hire, or reward');
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'MOT-PVT-2026-0049281'), NULL, 'General Exclusion', NULL, 'Driving without a valid driving license or under the influence of intoxicating liquor or drugs'),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'MOT-PVT-2026-0049281'), NULL, 'General Exclusion', NULL, 'Consequential loss, depreciation, wear and tear, electrical/mechanical breakdown (e.g., hydrostatic lock)'),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'MOT-PVT-2026-0049281'), NULL, 'Geographical Exclusion', NULL, 'Claims arising outside the geographical boundaries of India'),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'MOT-PVT-2026-0049281'), NULL, 'Limitation of Use', NULL, 'Usage of private vehicle for commercial transport, hire, or reward');
 
 INSERT INTO policy_terms (policy_id, term_category, term_name, term_details) VALUES
-(@policy_2_id, 'Discount', 'No Claim Bonus (NCB) Entitlement', '20% discount applied at inception. Transferable upon sale of vehicle within 90 days'),
-(@policy_2_id, 'Add-On Rider', 'Zero Depreciation Add-on (Dep Shield)', 'Depreciation deduction waived on plastic, rubber, glass, and metal parts at authorized network garages');
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'MOT-PVT-2026-0049281'), 'Discount', 'No Claim Bonus (NCB) Entitlement', '20% discount applied at inception. Transferable upon sale of vehicle within 90 days'),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'MOT-PVT-2026-0049281'), 'Add-On Rider', 'Zero Depreciation Add-on (Dep Shield)', 'Depreciation deduction waived on plastic, rubber, glass, and metal parts at authorized network garages');
 
 
 -- ----------------------------------------------------------------------------
@@ -269,27 +268,25 @@ PERIOD OF INSURANCE: 01-Jan-2026 to 31-Dec-2026 (Active)
 - Reinstatement Value Clause: Claims for building and plant machinery settled on repair/replacement cost without deducting depreciation, provided reinstatement is completed within 12 months.'
 );
 
-SET @policy_3_id = LAST_INSERT_ID();
-
 INSERT INTO policy_coverages (policy_id, coverage_name, coverage_limit_amount, coverage_limit_description, sub_limit_percentage) VALUES
-(@policy_3_id, 'Building / Factory Structure', 85000000.00, 'Coverage for real factory building assets', NULL),
-(@policy_3_id, 'Plant & Machinery', 40000000.00, 'Coverage for industrial equipment and machinery', NULL),
-(@policy_3_id, 'Stock of Finished & Raw Materials', 25000000.00, 'Coverage for commercial inventory', NULL),
-(@policy_3_id, 'Total Sum Insured (TSI)', 150000000.00, 'Aggregate policy coverage cap (Exclusive of 18% GST)', NULL);
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'SFSP-COMM-2026-77102'), 'Building / Factory Structure', 85000000.00, 'Coverage for real factory building assets', NULL),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'SFSP-COMM-2026-77102'), 'Plant & Machinery', 40000000.00, 'Coverage for industrial equipment and machinery', NULL),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'SFSP-COMM-2026-77102'), 'Stock of Finished & Raw Materials', 25000000.00, 'Coverage for commercial inventory', NULL),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'SFSP-COMM-2026-77102'), 'Total Sum Insured (TSI)', 150000000.00, 'Aggregate policy coverage cap (Exclusive of 18% GST)', NULL);
 
 INSERT INTO policy_deductibles (policy_id, deductible_type, deductible_amount, deductible_percentage, description) VALUES
-(@policy_3_id, 'Standard Excess', 1000000.00, 5.00, '5% of claim amount subject to a minimum of ₹10,00,000 per event for material damage'),
-(@policy_3_id, 'AOG / STFI Excess', 25000.00, 5.00, '5% of claim amount subject to a minimum of ₹25,000 per loss for Storm, Tempest, Flood, Inundation');
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'SFSP-COMM-2026-77102'), 'Standard Excess', 1000000.00, 5.00, '5% of claim amount subject to a minimum of ₹10,00,000 per event for material damage'),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'SFSP-COMM-2026-77102'), 'AOG / STFI Excess', 25000.00, 5.00, '5% of claim amount subject to a minimum of ₹25,000 per loss for Storm, Tempest, Flood, Inundation');
 
 INSERT INTO policy_exclusions (policy_id, exclusion_code, exclusion_category, waiting_period_months, exclusion_description) VALUES
-(@policy_3_id, NULL, 'Catastrophic Exclusion', NULL, 'War, invasion, act of foreign enemy, nuclear radiation, or radioactive contamination'),
-(@policy_3_id, NULL, 'General Exclusion', NULL, 'Pollution or contamination, except where resulting from a peril hereby insured'),
-(@policy_3_id, NULL, 'Peril Exclusion', NULL, 'Loss by theft during or after the occurrence of any insured peril'),
-(@policy_3_id, NULL, 'Operational Exclusion', NULL, 'Spontaneous combustion or damage caused by heating or drying processes carried out on stocks');
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'SFSP-COMM-2026-77102'), NULL, 'Catastrophic Exclusion', NULL, 'War, invasion, act of foreign enemy, nuclear radiation, or radioactive contamination'),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'SFSP-COMM-2026-77102'), NULL, 'General Exclusion', NULL, 'Pollution or contamination, except where resulting from a peril hereby insured'),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'SFSP-COMM-2026-77102'), NULL, 'Peril Exclusion', NULL, 'Loss by theft during or after the occurrence of any insured peril'),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'SFSP-COMM-2026-77102'), NULL, 'Operational Exclusion', NULL, 'Spontaneous combustion or damage caused by heating or drying processes carried out on stocks');
 
 INSERT INTO policy_terms (policy_id, term_category, term_name, term_details) VALUES
-(@policy_3_id, 'Endorsement', 'Earthquake (Fire & Shock) Endorsement', 'Extended coverage included subject to seismic Zone III rating'),
-(@policy_3_id, 'Settlement Clause', 'Reinstatement Value Clause', 'Building and machinery claims settled on replacement cost without depreciation if completed in 12 months');
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'SFSP-COMM-2026-77102'), 'Endorsement', 'Earthquake (Fire & Shock) Endorsement', 'Extended coverage included subject to seismic Zone III rating'),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'SFSP-COMM-2026-77102'), 'Settlement Clause', 'Reinstatement Value Clause', 'Building and machinery claims settled on replacement cost without depreciation if completed in 12 months');
 
 
 -- ----------------------------------------------------------------------------
@@ -331,22 +328,20 @@ POLICY PERIOD: 01-May-2026 to 30-Apr-2027 (Active)
 - Incident Reporting Timelines: Mandatory reporting to the insurer''s Incident Response Panel and CERT-In within 6 hours of discovery of a breach.'
 );
 
-SET @policy_4_id = LAST_INSERT_ID();
-
 INSERT INTO policy_coverages (policy_id, coverage_name, coverage_limit_amount, coverage_limit_description, time_waiting_period_hours) VALUES
-(@policy_4_id, 'Cyber Extortion & Ransomware Liability', 5000000.00, 'Aggregate policy limit for ransomware demands and negotiation', NULL),
-(@policy_4_id, 'Digital Data Restoration & Forensic Costs', 2500000.00, 'Per incident cap for IT forensics and data rebuilding', NULL),
-(@policy_4_id, 'DPDP Act Fines & Defence Costs', 10000000.00, 'Regulatory penalties and legal defense costs under Digital Personal Data Protection Act', NULL),
-(@policy_4_id, 'Business Interruption Loss of Profit', 5000000.00, 'Net profit loss coverage subject to 12-hour time excess', 12);
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'CYBER-SME-2026-10293'), 'Cyber Extortion & Ransomware Liability', 5000000.00, 'Aggregate policy limit for ransomware demands and negotiation', NULL),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'CYBER-SME-2026-10293'), 'Digital Data Restoration & Forensic Costs', 2500000.00, 'Per incident cap for IT forensics and data rebuilding', NULL),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'CYBER-SME-2026-10293'), 'DPDP Act Fines & Defence Costs', 10000000.00, 'Regulatory penalties and legal defense costs under Digital Personal Data Protection Act', NULL),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'CYBER-SME-2026-10293'), 'Business Interruption Loss of Profit', 5000000.00, 'Net profit loss coverage subject to 12-hour time excess', 12);
 
 INSERT INTO policy_deductibles (policy_id, deductible_type, deductible_amount, description) VALUES
-(@policy_4_id, 'Self-Insured Retention (SIR)', 1000000.00, 'Applicable to each claim under Data Recovery and Third-Party Cyber Claims'),
-(@policy_4_id, 'Time Excess', NULL, '12 consecutive hours of operational halt required before Business Interruption pays out');
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'CYBER-SME-2026-10293'), 'Self-Insured Retention (SIR)', 1000000.00, 'Applicable to each claim under Data Recovery and Third-Party Cyber Claims'),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'CYBER-SME-2026-10293'), 'Time Excess', NULL, '12 consecutive hours of operational halt required before Business Interruption pays out');
 
 INSERT INTO policy_exclusions (policy_id, exclusion_code, exclusion_category, exclusion_description) VALUES
-(@policy_4_id, NULL, 'Security Protocol Failure', 'Failure to apply security patches within 60 days or missing 2FA on admin portals'),
-(@policy_4_id, NULL, 'Infrastructure Failure', 'Public utility failures including state power grid shutoffs and national telecom backbone outages'),
-(@policy_4_id, NULL, 'Social Engineering', 'Unexplained accounting discrepancies or wire fraud without out-of-band phone verification');
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'CYBER-SME-2026-10293'), NULL, 'Security Protocol Failure', 'Failure to apply security patches within 60 days or missing 2FA on admin portals'),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'CYBER-SME-2026-10293'), NULL, 'Infrastructure Failure', 'Public utility failures including state power grid shutoffs and national telecom backbone outages'),
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'CYBER-SME-2026-10293'), NULL, 'Social Engineering', 'Unexplained accounting discrepancies or wire fraud without out-of-band phone verification');
 
 INSERT INTO policy_terms (policy_id, term_category, term_name, term_details) VALUES
-(@policy_4_id, 'Mandatory Condition', 'Incident Reporting Timelines', 'Mandatory reporting to insurer Panel and CERT-In within 6 hours of breach discovery');
+((SELECT policy_id FROM policy_contracts WHERE policy_number = 'CYBER-SME-2026-10293'), 'Mandatory Condition', 'Incident Reporting Timelines', 'Mandatory reporting to insurer Panel and CERT-In within 6 hours of breach discovery');
