@@ -1,33 +1,31 @@
 -- ============================================================================
--- Database: evidence_db (Simplified)
+-- Database: evidence_db (Simplified - SQLite Dialect)
 -- Description: Simple flat evidence lookup table linking 3rd-party verified details 
 --              (receipts, damage descriptions, estimates) directly to claim IDs.
--- Generated: 2026-08-02
+-- Generated: 2026-08-11
 -- ============================================================================
 
-CREATE DATABASE IF NOT EXISTS evidence_db;
-USE evidence_db;
-
+-- Drop existing objects if re-running
 DROP TABLE IF EXISTS evidence_records;
 
 -- Single, flat table for straightforward query execution
 CREATE TABLE evidence_records (
-    claim_id INT PRIMARY KEY,
-    claim_reference_no VARCHAR(100) NOT NULL UNIQUE,
-    policy_number VARCHAR(100) NOT NULL,
-    claimant_name VARCHAR(255) NOT NULL,
+    claim_id INTEGER PRIMARY KEY,
+    claim_reference_no TEXT NOT NULL UNIQUE,
+    policy_number TEXT NOT NULL,
+    claimant_name TEXT NOT NULL,
     
     -- Claimed vs Verified Totals (For simple LLM math comparison)
-    claimed_amount DECIMAL(15, 2) NOT NULL,
-    validated_evidence_total DECIMAL(15, 2) NOT NULL,
-    discrepancy_amount DECIMAL(15, 2) NOT NULL,
+    claimed_amount REAL NOT NULL,
+    validated_evidence_total REAL NOT NULL,
+    discrepancy_amount REAL NOT NULL,
     
     -- Evidence Details
-    verifier_name VARCHAR(255) NOT NULL,        -- e.g., 'MediAssist TPA Network'
-    evidence_type VARCHAR(100) NOT NULL,        -- e.g., 'Hospital Receipt & Bill'
-    receipt_reference_no VARCHAR(100) NOT NULL, -- e.g., 'RCPT-APOLLO-991'
-    damage_description TEXT NOT NULL,          -- Description of loss / procedure
-    verification_status VARCHAR(50) DEFAULT 'Verified'
+    verifier_name TEXT NOT NULL,         -- e.g., 'MediAssist TPA Network'
+    evidence_type TEXT NOT NULL,         -- e.g., 'Hospital Receipt & Bill'
+    receipt_reference_no TEXT NOT NULL,  -- e.g., 'RCPT-APOLLO-991'
+    damage_description TEXT NOT NULL,   -- Description of loss / procedure
+    verification_status TEXT DEFAULT 'Verified'
 );
 
 -- ============================================================================
