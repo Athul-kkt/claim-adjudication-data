@@ -1,15 +1,14 @@
 -- ============================================================================
--- Database: claims_adjudication_db
+-- Database: claims_adjudication_db (SQLite Dialect)
 -- Description: Consolidated adjudication history tracking policy terms, 
 --              evidence totals, mathematical deductions, and final STP/Manual decisions.
--- Generated: 2026-08-02
+-- Generated: 2026-08-11
 -- ============================================================================
 
-CREATE DATABASE IF NOT EXISTS claims_adjudication_db;
-USE claims_adjudication_db;
+PRAGMA foreign_keys = ON;
 
 -- Drop existing objects if re-running
-DROP PROCEDURE IF EXISTS sp_get_claim_adjudication_details;
+DROP VIEW IF EXISTS v_claim_adjudication_details;
 DROP TABLE IF EXISTS claim_adjudication_records;
 
 -- ----------------------------------------------------------------------------
@@ -17,36 +16,36 @@ DROP TABLE IF EXISTS claim_adjudication_records;
 -- Stores the final executed decision and calculation breakdown per claim
 -- ----------------------------------------------------------------------------
 CREATE TABLE claim_adjudication_records (
-    adjudication_id INT AUTO_INCREMENT PRIMARY KEY,
-    claim_id INT NOT NULL UNIQUE,
-    claim_reference_no VARCHAR(100) NOT NULL UNIQUE,
-    policy_number VARCHAR(100) NOT NULL,
-    policy_type VARCHAR(100) NOT NULL,
-    claim_scenario VARCHAR(150) NOT NULL,
-    claimant_name VARCHAR(255) NOT NULL,
+    adjudication_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    claim_id INTEGER NOT NULL UNIQUE,
+    claim_reference_no TEXT NOT NULL UNIQUE,
+    policy_number TEXT NOT NULL,
+    policy_type TEXT NOT NULL,
+    claim_scenario TEXT NOT NULL,
+    claimant_name TEXT NOT NULL,
     
     -- Claimed vs Evidence Totals
-    claimed_amount DECIMAL(15, 2) NOT NULL,
-    verified_evidence_total DECIMAL(15, 2) NOT NULL,
-    discrepancy_amount DECIMAL(15, 2) NOT NULL,
+    claimed_amount REAL NOT NULL,
+    verified_evidence_total REAL NOT NULL,
+    discrepancy_amount REAL NOT NULL,
     
     -- Calculation Audit Breakdown
-    sub_limit_applied DECIMAL(15, 2),
-    applicable_deductible DECIMAL(15, 2) DEFAULT 0.00,
-    copay_percentage_applied DECIMAL(5, 2) DEFAULT 0.00,
-    copay_deducted_amount DECIMAL(15, 2) DEFAULT 0.00,
-    depreciation_deducted_amount DECIMAL(15, 2) DEFAULT 0.00,
-    final_calculated_net_payout DECIMAL(15, 2) NOT NULL,
+    sub_limit_applied REAL,
+    applicable_deductible REAL DEFAULT 0.00,
+    copay_percentage_applied REAL DEFAULT 0.00,
+    copay_deducted_amount REAL DEFAULT 0.00,
+    depreciation_deducted_amount REAL DEFAULT 0.00,
+    final_calculated_net_payout REAL NOT NULL,
     
     -- Decision & Routing
-    adjudication_status VARCHAR(50) NOT NULL, -- 'APPROVED_STP', 'ROUTED_FOR_HUMAN_REVIEW', 'REJECTED'
-    designated_authority VARCHAR(100) NOT NULL, -- 'STP_Automated_Engine', 'Junior_Claims_Adjuster', 'Senior_Claims_Manager'
+    adjudication_status TEXT NOT NULL, -- 'APPROVED_STP', 'ROUTED_FOR_HUMAN_REVIEW', 'REJECTED'
+    designated_authority TEXT NOT NULL, -- 'STP_Automated_Engine', 'Junior_Claims_Adjuster', 'Senior_Claims_Manager'
     adjudication_reasoning TEXT NOT NULL,
     
     -- Metadata
-    risk_score DECIMAL(3, 2) NOT NULL,
-    verifier_trust_score DECIMAL(3, 2) NOT NULL,
-    adjudicated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    risk_score REAL NOT NULL,
+    verifier_trust_score REAL NOT NULL,
+    adjudicated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ============================================================================
@@ -144,49 +143,42 @@ INSERT INTO claim_adjudication_records (
 );
 
 -- ============================================================================
--- STORED PROCEDURE: Single Point Lookup by Claim ID
--- Accepts numeric claim_id (e.g. '1') or string reference (e.g. 'CLM-2026-HLT-001')
+-- VIEW: Replaces Stored Procedure for Single Point Lookup
+-- Usage: 
+--   SELECT * FROM v_claim_adjudication_details WHERE claim_id = 1;
+--   OR
+--   SELECT * FROM v_claim_adjudication_details WHERE claim_reference_no = 'CLM-2026-HLT-001';
 -- ============================================================================
 
-DELIMITER //
-
-CREATE PROCEDURE sp_get_claim_adjudication_details(
-    IN p_claim_identifier VARCHAR(100)
-)
-BEGIN
-    SELECT 
-        r.claim_id,
-        r.claim_reference_no,
-        r.policy_number,
-        r.policy_type,
-        r.claim_scenario,
-        r.claimant_name,
-        
-        -- Summary Financials
-        r.claimed_amount,
-        r.verified_evidence_total,
-        r.discrepancy_amount,
-        
-        -- Detailed Deductions
-        r.sub_limit_applied,
-        r.applicable_deductible,
-        CONCAT(r.copay_percentage_applied, '%') AS copay_rate,
-        r.copay_deducted_amount,
-        r.depreciation_deducted_amount,
-        r.final_calculated_net_payout,
-        
-        -- Decision Audit
-        r.adjudication_status,
-        r.designated_authority,
-        r.adjudication_reasoning,
-        
-        -- Risk Audit Metrics
-        r.risk_score,
-        r.verifier_trust_score,
-        r.adjudicated_at
-    FROM claim_adjudication_records r
-    WHERE CAST(r.claim_id AS CHAR) = p_claim_identifier
-       OR r.claim_reference_no = p_claim_identifier;
-END //
-
-DELIMITER ;
+CREATE VIEW v_claim_adjudication_details AS
+SELECT 
+    r.claim_id,
+    r.claim_reference_no,
+    r.policy_number,
+    r.policy_type,
+    r.claim_scenario,
+    r.claimant_name,
+    
+    -- Summary Financials
+    r.claimed_amount,
+    r.verified_evidence_total,
+    r.discrepancy_amount,
+    
+    -- Detailed Deductions
+    r.sub_limit_applied,
+    r.applicable_deductible,
+    r.copay_percentage_applied || '%' AS copay_rate,
+    r.copay_deducted_amount,
+    r.depreciation_deducted_amount,
+    r.final_calculated_net_payout,
+    
+    -- Decision Audit
+    r.adjudication_status,
+    r.designated_authority,
+    r.adjudication_reasoning,
+    
+    -- Risk Audit Metrics
+    r.risk_score,
+    r.verifier_trust_score,
+    r.adjudicated_at
+FROM claim_adjudication_records r;
